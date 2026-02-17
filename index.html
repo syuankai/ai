@@ -3,277 +3,202 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>LobeNext v4.0 Mobile</title>
+    <title>LobeNext Pro v5.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
-        
-        :root {
-            --glass-bg: rgba(15, 15, 15, 0.85);
-            --glass-border: rgba(255, 255, 255, 0.1);
-        }
-
-        * { -webkit-tap-highlight-color: transparent; outline: none !important; }
-
+        :root { --glass: rgba(20, 20, 20, 0.8); --border: rgba(255, 255, 255, 0.1); }
         body {
             font-family: 'Noto Sans TC', sans-serif;
             background: #000;
-            background-image: radial-gradient(circle at 50% 0%, #2a2a2a 0%, #000 80%);
             color: #fff;
             height: 100vh;
-            margin: 0;
-            overflow: hidden;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
+            margin: 0;
         }
-
-        .glass {
-            background: var(--glass-bg);
-            backdrop-filter: blur(25px);
-            -webkit-backdrop-filter: blur(25px);
-            border: 1px solid var(--glass-border);
-        }
-
-        .scroll-content {
+        .scroll-area {
             flex: 1;
             overflow-y: auto;
+            padding: 20px;
+            padding-bottom: 220px; /* 防止被輸入框擋住 */
             -webkit-overflow-scrolling: touch;
-            padding-bottom: 200px;
         }
-
-        /* 標籤分類樣式 */
-        .tag-badge { @apply text-[9px] px-2 py-0.5 rounded-md font-bold ml-auto shrink-0; }
+        .glass { background: var(--glass); backdrop-filter: blur(20px); border: 1px solid var(--border); }
+        .tag-badge { @apply text-[9px] px-1.5 py-0.5 rounded ml-auto font-bold; }
         .tag-推薦 { @apply bg-green-500/20 text-green-400; }
-        .tag-輕量 { @apply bg-blue-500/20 text-blue-400; }
         .tag-快速 { @apply bg-orange-500/20 text-orange-400; }
-        .tag-不建議 { @apply bg-red-500/20 text-red-400; }
-
-        .hero-text {
-            font-size: clamp(1.8rem, 8vw, 2.8rem);
-            font-weight: 800;
-            background: linear-gradient(to bottom, #fff 40%, #555 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        /* 下拉選單手機優化 */
-        .select-options {
-            @apply fixed bottom-32 left-[5%] w-[90%] glass rounded-[24px] p-2 shadow-2xl z-[100] hidden flex-col max-h-[50vh] overflow-y-auto border-white/20;
-            animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-
-        .bubble { @apply max-w-[90%] p-4 rounded-[22px] shadow-lg mb-4 text-[15px] leading-relaxed transition-all; }
+        .tag-輕量 { @apply bg-blue-500/20 text-blue-400; }
+        .tag-工具 { @apply bg-purple-500/20 text-purple-400; }
+        .bubble { @apply max-w-[85%] p-4 rounded-[22px] mb-4 shadow-xl text-[15px]; }
         .bubble-user { @apply bg-white text-black self-end rounded-br-none; }
         .bubble-ai { @apply glass text-white self-start rounded-bl-none; }
-        
-        .nav-btn { @apply flex-1 flex flex-col items-center justify-center gap-1 text-gray-500; }
-        .nav-btn.active { @apply text-white; }
+        .model-list { @apply fixed bottom-32 left-[5%] w-[90%] glass rounded-[28px] max-h-[50vh] overflow-y-auto hidden z-[100] p-2 border-white/20; }
+        .status-dot { @apply text-[10px] px-2 py-1 rounded-full bg-white/5 border border-white/10; }
     </style>
 </head>
 <body>
-
     <div class="h-[env(safe-area-inset-top)]"></div>
 
     <main class="flex-1 flex flex-col relative overflow-hidden">
-        
-        <div id="view-home" class="scroll-content px-4">
-            <!-- 啟動介面 -->
-            <div id="hero-section" class="flex flex-col items-center justify-center text-center pt-28 pb-10 space-y-4">
-                <div class="w-16 h-16 bg-white/5 rounded-3xl flex items-center justify-center border border-white/10 mb-2">
-                    <i class="fas fa-ghost text-3xl"></i>
-                </div>
-                <h1 id="displayHeroText" class="hero-text">再次啟動高效模式！</h1>
-                <p class="text-gray-500 text-sm">AI 代理已啟用 · 最佳模型動態匹配</p>
+        <!-- 對話視窗 -->
+        <div id="view-home" class="scroll-area flex flex-col">
+            <div id="hero" class="mt-20 text-center space-y-4">
+                <h1 id="heroText" class="text-4xl font-extrabold bg-gradient-to-b from-white to-gray-500 bg-clip-text text-transparent">再次啟動高效模式！</h1>
+                <p class="text-gray-500 text-sm">已連接 D1 雲端同步系統</p>
             </div>
-
-            <!-- 聊天紀錄 -->
-            <div id="chatHistory" class="hidden flex flex-col pt-10 pb-10"></div>
+            <div id="chatHistory" class="flex flex-col mt-10"></div>
         </div>
 
-        <!-- 設定介面 -->
-        <div id="view-settings" class="hidden scroll-content px-6 pt-10">
-            <h2 class="text-3xl font-bold mb-10 text-white">設定</h2>
+        <!-- 設定視窗 -->
+        <div id="view-settings" class="scroll-area hidden">
+            <h2 class="text-3xl font-bold mb-8">系統與設定</h2>
+            
             <div class="space-y-6">
-                <div class="glass p-6 rounded-[30px] space-y-4">
-                    <label class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">自定義 API KEY</label>
-                    <input type="password" id="customApiKey" class="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white" placeholder="輸入您的 Gemini Key...">
-                    <button onclick="applySettings()" class="w-full bg-white text-black py-4 rounded-xl font-bold active:scale-95 transition-all">套用設定</button>
+                <!-- 狀態監測 -->
+                <div class="glass p-5 rounded-3xl grid grid-cols-2 gap-3">
+                    <div class="status-dot">Functions: <span id="st-func">...</span></div>
+                    <div class="status-dot">D1 數據庫: <span id="st-d1">...</span></div>
+                    <div class="status-dot">Gemini API: <span id="st-gem">...</span></div>
+                    <div class="status-dot">Cloudflare AI: <span id="st-ai">...</span></div>
                 </div>
-                <div class="glass p-6 rounded-[30px] space-y-4">
-                    <label class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">首頁標題</label>
-                    <input type="text" id="inputHeroText" class="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white">
+
+                <div class="glass p-6 rounded-[32px] space-y-4">
+                    <label class="text-[11px] font-bold text-gray-500 uppercase">自定義 Gemini Key</label>
+                    <input type="password" id="inputKey" class="w-full bg-white/5 border-white/10 rounded-2xl p-4" placeholder="AIza...">
+                    <label class="text-[11px] font-bold text-gray-500 uppercase">自定義標題</label>
+                    <input type="text" id="inputHero" class="w-full bg-white/5 border-white/10 rounded-2xl p-4">
+                    <div class="flex items-center gap-3 py-2">
+                        <input type="checkbox" id="showMore" class="w-5 h-5 rounded-lg bg-white/5">
+                        <label for="showMore" class="text-sm">開啟更多 Cloudflare 免費模型</label>
+                    </div>
+                    <button onclick="saveSettings()" class="w-full bg-white text-black py-4 rounded-xl font-bold">儲存至雲端 (D1)</button>
                 </div>
             </div>
         </div>
 
-        <!-- 輸入欄與模型切換 -->
-        <div id="input-bar" class="fixed bottom-24 left-0 w-full px-4 z-50">
-            <div class="glass rounded-[30px] p-2">
-                <textarea id="userInput" rows="1" class="w-full bg-transparent border-none focus:ring-0 px-4 py-3 text-white placeholder-gray-600 resize-none max-h-32 text-base" placeholder="傳送訊息..."></textarea>
-                
+        <!-- 底部控制框 -->
+        <div id="input-bar" class="fixed bottom-24 left-0 w-full px-4">
+            <div class="glass rounded-[32px] p-2 shadow-2xl">
+                <textarea id="userInput" rows="1" class="w-full bg-transparent border-none px-4 py-3 text-white text-base" placeholder="輸入訊息..."></textarea>
                 <div class="flex items-center justify-between px-3 pb-2">
                     <div class="relative">
-                        <div id="modelTrigger" class="flex items-center gap-2 bg-white/10 border border-white/10 rounded-full px-4 py-1.5 text-[11px] font-bold" onclick="toggleModelList(event)">
-                            <span id="selectedModelLabel">正在偵測環境...</span>
+                        <div class="flex items-center gap-2 bg-white/10 rounded-full px-4 py-1.5 text-[11px] font-bold" onclick="toggleModels(event)">
+                            <span id="modelLabel">正在載入模型...</span>
                             <i class="fas fa-chevron-up text-[8px] opacity-40"></i>
                         </div>
-                        <div id="modelOptions" class="select-options"></div>
+                        <div id="modelOptions" class="model-list"></div>
                     </div>
-                    <button id="sendBtn" class="w-10 h-10 bg-white text-black rounded-full flex items-center justify-center active:scale-90 shadow-lg">
+                    <button id="sendBtn" class="w-10 h-10 bg-white text-black rounded-full flex items-center justify-center">
                         <i class="fas fa-arrow-up"></i>
                     </button>
                 </div>
             </div>
         </div>
 
-        <!-- 底部導航 -->
-        <nav class="fixed bottom-0 left-0 w-full h-[85px] flex glass bg-black/50 pt-2 pb-[env(safe-area-inset-bottom)] border-t-0">
-            <div onclick="switchTab('home')" id="nav-home" class="nav-btn active">
-                <i class="fas fa-comment-dots text-xl"></i>
-                <span class="text-[10px] mt-1 font-bold">對話</span>
-            </div>
-            <div onclick="switchTab('settings')" id="nav-settings" class="nav-btn">
-                <i class="fas fa-sliders-h text-xl"></i>
-                <span class="text-[10px] mt-1 font-bold">設定</span>
-            </div>
+        <nav class="fixed bottom-0 w-full h-20 glass border-t-0 flex items-center justify-around pb-[env(safe-area-inset-bottom)]">
+            <div onclick="switchTab('home')" class="flex flex-col items-center opacity-50 nav-active" id="nav-h"><i class="fas fa-comment"></i><span class="text-[10px]">對話</span></div>
+            <div onclick="switchTab('settings')" class="flex flex-col items-center opacity-50" id="nav-s"><i class="fas fa-cog"></i><span class="text-[10px]">設定</span></div>
         </nav>
     </main>
 
     <script>
-        const state = {
-            apiKey: sessionStorage.getItem('next_api_key') || '',
-            heroText: localStorage.getItem('next_hero_text') || '再次啟動高效模式！',
-            models: [], messages: [], selectedModel: '', selectedProvider: '', isHome: true
-        };
-
-        const dom = {
-            chatHistory: document.getElementById('chatHistory'),
-            heroSection: document.getElementById('hero-section'),
-            userInput: document.getElementById('userInput'),
-            modelOptions: document.getElementById('modelOptions'),
-            selectedModelLabel: document.getElementById('selectedModelLabel'),
-            displayHeroText: document.getElementById('displayHeroText')
-        };
+        const state = { hero: '', key: '', models: [], messages: [], current: '', provider: '', tab: 'home' };
 
         async function init() {
-            dom.displayHeroText.textContent = state.heroText;
-            document.getElementById('inputHeroText').value = state.heroText;
-            document.getElementById('customApiKey').value = state.apiKey;
-            await reloadModels();
+            const res = await fetch('/api/settings');
+            const data = await res.json();
+            state.hero = data.heroText;
+            state.key = data.apiKey;
+            document.getElementById('heroText').textContent = state.hero;
+            document.getElementById('inputHero').value = state.hero;
+            document.getElementById('inputKey').value = state.apiKey;
 
-            dom.userInput.oninput = function() {
-                this.style.height = 'auto';
-                this.style.height = Math.min(this.scrollHeight, 120) + 'px';
-            };
-
-            document.getElementById('sendBtn').onclick = sendMessage;
-            window.onclick = (e) => { if (!e.target.closest('.relative')) dom.modelOptions.classList.add('hidden'); };
+            await loadModels();
+            updateStatus();
         }
 
-        async function reloadModels() {
-            try {
-                const headers = state.apiKey ? { 'x-custom-api-key': state.apiKey } : {};
-                const res = await fetch('/api/models', { headers });
-                const data = await res.json();
-                state.models = data.models;
-                
-                dom.modelOptions.innerHTML = data.models.map(m => {
-                    const tagType = m.tag.replace(/[✅🍃⚡⚠️]/g, '').trim();
-                    return `
-                        <div class="px-5 py-4 rounded-2xl text-sm mb-1 active:bg-white/10 flex items-center" 
-                             onclick="selectModel('${m.id}', '${m.name}', '${m.provider}')">
-                            <span class="truncate mr-2">${m.name}</span>
-                            <span class="tag-badge tag-${tagType}">${m.tag}</span>
-                            ${m.id === state.selectedModel ? '<i class="fas fa-check text-blue-400 ml-2"></i>' : ''}
-                        </div>
-                    `;
-                }).join('');
+        async function updateStatus() {
+            const res = await fetch('/api/status');
+            const s = await res.json();
+            document.getElementById('st-func').textContent = s.functions;
+            document.getElementById('st-d1').textContent = s.d1;
+            document.getElementById('st-gem').textContent = s.gemini;
+            document.getElementById('st-ai').textContent = s.cf_ai;
+        }
 
-                if (data.models.length > 0 && !state.selectedModel) {
-                    const first = data.models[0];
-                    selectModel(first.id, first.name, first.provider);
-                }
-            } catch (e) { dom.selectedModelLabel.textContent = "API 連線異常"; }
+        async function loadModels() {
+            const more = document.getElementById('showMore').checked;
+            const res = await fetch(`/api/models?more=${more}`, { headers: {'x-custom-api-key': state.key }});
+            const data = await res.json();
+            state.models = data.models;
+            document.getElementById('modelOptions').innerHTML = data.models.map(m => `
+                <div class="px-5 py-4 flex items-center hover:bg-white/5 rounded-2xl cursor-pointer" onclick="selectModel('${m.id}', '${m.name}', '${m.provider}')">
+                    <span class="truncate">${m.name}</span>
+                    <span class="tag-badge tag-${m.tag.replace(/[✅🍃⚡🛠️⚠️]/g, '').trim()}">${m.tag}</span>
+                </div>
+            `).join('');
+            if (data.models.length > 0 && !state.current) selectModel(data.models[0].id, data.models[0].name, data.models[0].provider);
         }
 
         function selectModel(id, name, provider) {
-            state.selectedModel = id;
-            state.selectedProvider = provider;
-            dom.selectedModelLabel.textContent = name;
-            dom.modelOptions.classList.add('hidden');
-            reloadModels();
-        }
-
-        function toggleModelList(e) { e.stopPropagation(); dom.modelOptions.classList.toggle('hidden'); }
-
-        function switchTab(tab) {
-            state.isHome = (tab === 'home');
-            document.getElementById('view-home').classList.toggle('hidden', !state.isHome);
-            document.getElementById('view-settings').classList.toggle('hidden', state.isHome);
-            document.getElementById('nav-home').classList.toggle('active', state.isHome);
-            document.getElementById('nav-settings').classList.toggle('active', !state.isHome);
-            document.getElementById('input-bar').style.display = state.isHome ? 'block' : 'none';
-        }
-
-        function applySettings() {
-            state.apiKey = document.getElementById('customApiKey').value.trim();
-            state.heroText = document.getElementById('inputHeroText').value.trim() || '再次啟動高效模式！';
-            sessionStorage.setItem('next_api_key', state.apiKey);
-            localStorage.setItem('next_hero_text', state.heroText);
-            location.reload();
+            state.current = id; state.provider = provider;
+            document.getElementById('modelLabel').textContent = name;
+            document.getElementById('modelOptions').classList.add('hidden');
         }
 
         async function sendMessage() {
-            const text = dom.userInput.value.trim();
-            if(!text) return;
-
-            dom.heroSection.classList.add('hidden');
-            dom.chatHistory.classList.remove('hidden');
-
-            appendBubble('user', text);
-            dom.userInput.value = '';
-            dom.userInput.style.height = 'auto';
-
-            const aiBubble = appendBubble('assistant', '與代理伺服器握手中...', state.selectedModel);
-
-            try {
-                state.messages.push({ role: 'user', content: text });
-                const res = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'x-custom-api-key': state.apiKey },
-                    body: JSON.stringify({ model: state.selectedModel, provider: state.selectedProvider, messages: state.messages })
-                });
-                const data = await res.json();
-                if(data.error) throw new Error(data.error);
-                
-                updateBubble(aiBubble, data.content);
-                state.messages.push({ role: 'assistant', content: data.content });
-            } catch (e) { updateBubble(aiBubble, "請求失敗: " + e.message, true); }
+            const val = document.getElementById('userInput').value.trim();
+            if (!val) return;
+            document.getElementById('hero').classList.add('hidden');
+            appendBubble('user', val);
+            document.getElementById('userInput').value = '';
+            const aiBubble = appendBubble('assistant', '正在思考...');
+            
+            state.messages.push({ role: 'user', content: val });
+            const res = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-custom-api-key': state.key },
+                body: JSON.stringify({ model: state.current, provider: state.provider, messages: state.messages })
+            });
+            const data = await res.json();
+            aiBubble.querySelector('.content').textContent = data.content;
+            state.messages.push({ role: 'assistant', content: data.content });
         }
 
-        function appendBubble(role, content, model = "") {
+        function appendBubble(role, text) {
             const div = document.createElement('div');
             div.className = `bubble ${role === 'user' ? 'bubble-user' : 'bubble-ai'}`;
-            div.innerHTML = `
-                ${role === 'assistant' ? `<div class="text-[9px] font-bold text-gray-500 mb-1 uppercase">${model}</div>` : ''}
-                <div class="whitespace-pre-wrap">${content}</div>
-            `;
-            dom.chatHistory.appendChild(div);
-            const scrollBox = document.getElementById('view-home');
-            scrollBox.scrollTo({ top: scrollBox.scrollHeight, behavior: 'smooth' });
+            div.innerHTML = `<div class="content whitespace-pre-wrap">${text}</div>`;
+            document.getElementById('chatHistory').appendChild(div);
+            const view = document.getElementById('view-home');
+            view.scrollTo({ top: view.scrollHeight, behavior: 'smooth' });
             return div;
         }
 
-        function updateBubble(div, content, isError = false) {
-            const target = div.querySelector('.whitespace-pre-wrap');
-            if(isError) target.classList.add('text-red-400');
-            target.textContent = content;
-            const scrollBox = document.getElementById('view-home');
-            scrollBox.scrollTo({ top: scrollBox.scrollHeight, behavior: 'smooth' });
+        function toggleModels(e) { e.stopPropagation(); document.getElementById('modelOptions').classList.toggle('hidden'); }
+        function switchTab(t) {
+            document.getElementById('view-home').classList.toggle('hidden', t !== 'home');
+            document.getElementById('view-settings').classList.toggle('hidden', t !== 'settings');
+            document.getElementById('nav-h').style.opacity = t === 'home' ? '1' : '0.5';
+            document.getElementById('nav-s').style.opacity = t === 'settings' ? '1' : '0.5';
+            document.getElementById('input-bar').style.display = t === 'home' ? 'block' : 'none';
         }
 
+        async function saveSettings() {
+            const hero = document.getElementById('inputHero').value;
+            const key = document.getElementById('inputKey').value;
+            await fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: 'default', heroText: hero, apiKey: key })
+            });
+            location.reload();
+        }
+
+        document.getElementById('sendBtn').onclick = sendMessage;
         init();
     </script>
 </body>
