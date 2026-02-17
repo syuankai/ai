@@ -1,112 +1,83 @@
 /**
- * Cloudflare Pages Functions: AI 後端控制中心
- * 處理健康檢查、環境變數監測以及 API 請求轉發
+ * Cloudflare Pages Functions: V4 安全路由
+ * 功能：
+ * 1. GET: 自動根據環境變數產生可用模型列表。
+ * 2. POST: 處理對應模型的請求轉發。
  */
 
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
 
-  // 1. 處理 GET 請求：回傳 API 狀態 (健康檢查)
-  if (request.method === "GET") {
-    try {
-      // 檢查環境變數是否存在
-      const hasGemini = !!env.GEMINI_API_KEY;
-      const hasCfAI = !!env.AI;
-      const hasD1 = !!env.DB; // 假設 D1 綁定名稱為 DB
-
-      return new Response(
-        JSON.stringify({
-          status: "ok",
-          services: {
-            gemini: hasGemini ? "ok" : "error",
-            cloudflare: hasCfAI ? "ok" : "error",
-            functions: "ok",
-            d1: hasD1 ? "ok" : "error"
-          },
-          config: {
-            // 只回傳是否設定，不回傳真實金鑰以策安全
-            has_gemini_key: hasGemini,
-            has_cf_binding: hasCfAI
-          }
-        }),
-        {
-          headers: { "Content-Type": "application/json;charset=UTF-8" },
-        }
-      );
-    } catch (error) {
-      return new Response(JSON.stringify({ status: "error", message: error.message }), { status: 500 });
-    }
+  // 處理跨域與預檢 (如需要)
+  if (request.method === "OPTIONS") {
+    return new Response(null, { headers: { "Access-Control-Allow-Origin": "*" } });
   }
 
-  // 2. 處理 POST 請求：執行 AI 任務
+  // --- GET: 模型探測 ---
+  if (request.method === "GET") {
+    const availableModels = [];
+    const caps = {
+      hasGemini: !!env.GEMINI_API_KEY,
+      hasCloudflare: !!env.AI,
+      hasD1: !!env.DB
+    };
+
+    // 如果有 Cloudflare AI 權限，列出 CF 模型
+    if (caps.hasCloudflare) {
+      availableModels.push(
+        { id: '@cf/meta/llama-3.1-8b-instruct', name: 'Llama 3.1 8B', provider: 'cloudflare' },
+        { id: '@cf/mistral/mistral-7b-instruct-v0.1', name: 'Mistral 7B', provider: 'cloudflare' },
+        { id: '@cf/google/gemma-7b-it', name: 'Gemma 7B', provider: 'cloudflare' }
+      );
+    }
+
+    // 如果有 Gemini Key，列出 Gemini
+    if (caps.hasGemini) {
+      availableModels.push({
+        id: 'gemini-2.5-flash-preview-09-2025',
+        name: 'Gemini 2.5 Flash',
+        provider: 'google'
+      });
+    }
+
+    return new Response(JSON.stringify({
+      status: "ok",
+      models: availableModels,
+      capabilities: caps
+    }), { headers: { "Content-Type": "application/json;charset=UTF-8" } });
+  }
+
+  // --- POST: 請求處理 ---
   if (request.method === "POST") {
     try {
-      const body = await request.json();
-      const { model, prompt, messages } = body;
+      const { model, prompt, messages } = await request.json();
 
-      // 判斷路由：Cloudflare Workers AI
       if (model.startsWith("@cf/")) {
-        if (!env.AI) throw new Error("Cloudflare AI 綁定未設定");
-
-        // 執行 Cloudflare Workers AI
-        const aiResponse = await env.AI.run(model, {
+        const result = await env.AI.run(model, {
           messages: messages || [{ role: "user", content: prompt }]
         });
-
-        return new Response(JSON.stringify({ result: aiResponse }), {
-          headers: { "Content-Type": "application/json" }
-        });
+        return new Response(JSON.stringify({ result }));
       }
 
-      // 判斷路由：Google Gemini
       if (model.includes("gemini")) {
-        if (!env.GEMINI_API_KEY) throw new Error("Gemini API Key 未在環境變數中設定");
-
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.GEMINI_API_KEY}`;
-        
-        const geminiRes = await fetch(geminiUrl, {
+        const res = await fetch(geminiUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }]
-          })
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
         });
-
-        if (!geminiRes.ok) {
-          const errData = await geminiRes.json();
-          throw new Error(`Gemini API 錯誤: ${errData.error?.message || "未知錯誤"}`);
-        }
-
-        const geminiData = await geminiRes.json();
-        const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-
-        return new Response(JSON.stringify({ result: { response: text } }), {
-          headers: { "Content-Type": "application/json" }
-        });
+        const data = await res.json();
+        return new Response(JSON.stringify({ 
+          result: { response: data.candidates?.[0]?.content?.parts?.[0]?.text } 
+        }));
       }
 
-      throw new Error("未支援的模型類型");
-
-    } catch (error) {
-      return new Response(
-        JSON.stringify({ status: "error", message: error.message }), 
-        { status: 500, headers: { "Content-Type": "application/json" } }
-      );
+      return new Response("未支援的模型", { status: 400 });
+    } catch (e) {
+      return new Response(JSON.stringify({ error: e.message }), { status: 500 });
     }
   }
 
-  // 3. 處理其他不支援的 Method
   return new Response("Method Not Allowed", { status: 405 });
-}
-
-/**
- * 輔助函式：實作簡單的 D1 儲存邏輯 (可根據需求在 POST 中調用)
- */
-async function saveToD1(env, userId, role, content) {
-  if (env.DB) {
-    await env.DB.prepare(
-      "INSERT INTO chat_history (user_id, role, content, created_at) VALUES (?, ?, ?, datetime('now'))"
-    ).bind(userId, role, content).run();
-  }
 }
