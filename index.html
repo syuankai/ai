@@ -2,354 +2,273 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>LobeChat | CloudAI Hub</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>LobeNext | 旗艦自定義版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Noto+Sans+TC:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
         
         :root {
-            --lobe-bg: #000000;
-            --lobe-sidebar: #000000;
-            --lobe-card: #161616;
-            --lobe-input: #1d1d1d;
-            --lobe-text: #e1e1e1;
-            --lobe-secondary: #888888;
-            --primary-accent: #ffffff;
+            --primary: #ffffff;
+            --glass-bg: rgba(20, 20, 20, 0.7);
+            --glass-blur: 20px;
+            --hero-font-size: 3rem;
         }
 
         body {
-            font-family: 'Inter', 'Noto Sans TC', sans-serif;
-            background-color: var(--lobe-bg);
-            color: var(--lobe-text);
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #000;
+            background-image: radial-gradient(circle at 50% -20%, #1a1a1a 0%, #000 80%);
+            color: #fff;
             height: 100vh;
             margin: 0;
-            display: flex;
             overflow: hidden;
-            -webkit-font-smoothing: antialiased;
         }
 
-        /* 側邊欄樣式 */
-        .sidebar-icon {
-            @apply flex items-center justify-center w-10 h-10 rounded-xl text-xl transition-all cursor-pointer;
-            color: var(--lobe-secondary);
-        }
-        .sidebar-icon:hover { background: #222; color: #fff; }
-        .sidebar-icon.active { background: #1a1a1a; color: #fff; }
-
-        /* 中央輸入框樣式 */
-        .search-container {
-            background: var(--lobe-card);
-            border: 1px solid #2a2a2a;
-            border-radius: 24px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        /* 助手卡片 */
-        .assistant-card {
-            background: var(--lobe-card);
-            border: 1px solid #222;
-            border-radius: 16px;
-            padding: 16px;
-            transition: all 0.2s;
-            cursor: pointer;
+        .hero-text {
+            font-size: var(--hero-font-size);
+            font-weight: 800;
+            background: linear-gradient(to bottom, #fff 0%, #888 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
-        .assistant-card:hover {
-            border-color: #444;
-            background: #1c1c1c;
-            transform: translateY(-2px);
+
+        /* 側邊導覽 */
+        .nav-item {
+            @apply flex items-center justify-center w-12 h-12 rounded-2xl transition-all cursor-pointer text-gray-500;
+        }
+        .nav-item.active { @apply bg-white/10 text-white shadow-lg; }
+
+        /* 自定義下拉選單 */
+        .custom-select {
+            @apply appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold cursor-pointer hover:bg-white/10 transition-all focus:outline-none;
         }
 
         /* 隱藏捲軸 */
-        .no-scrollbar::-webkit-scrollbar { display: none; }
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
 
-        /* WebView 安全區域 */
-        .safe-pb { padding-bottom: env(safe-area-inset-bottom); }
-        .safe-pt { padding-top: env(safe-area-inset-top); }
-
-        /* 打字機效果藍點 */
-        .cursor-dot {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            background: #0066ff;
-            border-radius: 50%;
-            margin-left: 4px;
-            animation: pulse 1s infinite;
-        }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+        .chat-container { scroll-behavior: smooth; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .msg-anim { animation: fadeIn 0.3s ease-out forwards; }
     </style>
 </head>
 <body>
 
-    <!-- 左側導覽列 (完全還原截圖) -->
-    <aside class="w-[64px] flex flex-col items-center py-4 border-r border-[#1a1a1a] shrink-0">
-        <div class="mb-8">
-            <img src="https://lobechat.com/logo.png" class="w-8 h-8 rounded-lg" onerror="this.src='https://api.dicebear.com/7.x/bottts/svg?seed=lobe'">
-        </div>
-        
-        <div class="flex-1 flex flex-col gap-4">
-            <div class="sidebar-icon"><i class="fas fa-search"></i></div>
-            <div class="sidebar-icon active"><i class="fas fa-home"></i></div>
-            <div class="sidebar-icon"><i class="fas fa-file-alt"></i></div>
-            <div class="sidebar-icon"><i class="fas fa-video"></i></div>
-            <div class="sidebar-icon"><i class="fas fa-paint-brush"></i></div>
-            <div class="sidebar-icon"><i class="fas fa-users"></i></div>
-        </div>
-
-        <div class="flex flex-col gap-4 mt-auto">
-            <div class="sidebar-icon" onclick="toggleSettings()"><i class="fas fa-cog"></i></div>
-            <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 overflow-hidden border border-[#333]">
-                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=popcat" alt="avatar">
+    <div class="flex h-full w-full relative">
+        <!-- 左側極簡導覽 -->
+        <aside class="w-16 flex flex-col items-center py-6 border-r border-white/5 shrink-0 z-50">
+            <div class="mb-10"><i class="fas fa-ghost text-2xl"></i></div>
+            <div class="flex flex-col gap-4">
+                <div onclick="switchTab('home')" id="tab-home" class="nav-item active"><i class="fas fa-house"></i></div>
+                <div onclick="switchTab('settings')" id="tab-settings" class="nav-item"><i class="fas fa-sliders"></i></div>
             </div>
-        </div>
-    </aside>
+            <div class="mt-auto nav-item"><img src="https://api.dicebear.com/7.x/bottts/svg?seed=user" class="w-8 h-8 rounded-full"></div>
+        </aside>
 
-    <!-- 主視窗 -->
-    <main class="flex-1 flex flex-col relative overflow-hidden">
-        
-        <!-- 頂部模型選擇器 (WebView 專用簡潔版) -->
-        <header class="h-14 flex items-center justify-between px-6 z-10">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="toggleSettings()">
-                <span id="currentModelName" class="font-bold text-sm tracking-wide">Gemini 1.5 Flash</span>
-                <i class="fas fa-chevron-down text-[10px] text-gray-500"></i>
-            </div>
-            <div class="flex gap-4 text-gray-500">
-                <i class="fas fa-expand-alt cursor-pointer hover:text-white"></i>
-            </div>
-        </header>
-
-        <!-- 內容滾動區 -->
-        <div id="scrollContent" class="flex-1 overflow-y-auto no-scrollbar pt-10 px-6 pb-20">
+        <!-- 主區域 -->
+        <main class="flex-1 flex flex-col relative overflow-hidden">
             
-            <!-- 再次啟動高效模式！ -->
-            <div id="homeHero" class="max-w-4xl mx-auto space-y-12">
-                <h1 class="text-3xl md:text-5xl font-bold text-center mt-10">再次啟動高效模式！</h1>
-
-                <!-- 置中輸入對話框 -->
-                <div class="search-container p-4">
-                    <textarea id="userInput" rows="3" 
-                        class="w-full bg-transparent border-none focus:ring-0 text-lg text-white placeholder-gray-600 resize-none"
-                        placeholder="詢問、創作或開始任務，按 Shift+Enter 換行..."></textarea>
-                    
-                    <div class="flex items-center justify-between mt-4">
-                        <div class="flex gap-4 text-gray-500">
-                            <i class="fas fa-magic cursor-pointer hover:text-white"></i>
-                            <i class="fas fa-paperclip cursor-pointer hover:text-white"></i>
-                            <i class="fas fa-microphone cursor-pointer hover:text-white"></i>
-                            <i class="fas fa-th-large cursor-pointer hover:text-white"></i>
-                        </div>
-                        <button id="sendBtn" class="w-10 h-10 bg-white text-black rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all">
-                            <i class="fas fa-paper-plane"></i>
-                        </button>
-                    </div>
+            <!-- 首頁佈局 -->
+            <div id="view-home" class="flex-1 flex flex-col items-center justify-center px-6 overflow-y-auto chat-container">
+                <div id="hero-section" class="text-center mb-12 space-y-4 msg-anim">
+                    <h1 id="displayHeroText" class="hero-text">再次啟動高效模式！</h1>
+                    <p class="text-gray-500 text-sm">由強大的多雲 AI 驅動，探索無限可能</p>
                 </div>
 
-                <!-- 快速操作 -->
-                <div class="flex justify-center gap-4 text-sm font-medium">
-                    <button class="px-6 py-2 bg-[#161616] border border-[#222] rounded-full hover:bg-[#222] flex items-center gap-2">
-                        <i class="fas fa-robot text-gray-500"></i> 建立助理
-                    </button>
-                    <button class="px-6 py-2 bg-[#161616] border border-[#222] rounded-full hover:bg-[#222] flex items-center gap-2">
-                        <i class="fas fa-layer-group text-gray-500"></i> 建立群組
-                    </button>
-                    <button class="px-6 py-2 bg-[#161616] border border-[#222] rounded-full hover:bg-[#222] flex items-center gap-2">
-                        <i class="fas fa-pen-nib text-gray-500"></i> 寫作
-                    </button>
-                </div>
+                <!-- 訊息流 (初始隱藏) -->
+                <div id="chatHistory" class="hidden w-full max-w-3xl space-y-8 pb-32"></div>
 
-                <!-- 社群助手 Grid -->
-                <div class="pt-10">
-                    <div class="flex items-center gap-2 mb-6 text-gray-400 font-bold">
-                        <i class="fas fa-robot"></i> 社群助手
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div class="assistant-card space-y-3">
-                            <div class="flex justify-between items-start">
-                                <div class="w-10 h-10 bg-yellow-500 rounded-xl flex items-center justify-center text-black font-bold">AI</div>
-                                <i class="fas fa-tag text-gray-600"></i>
+                <!-- 浮動輸入框 -->
+                <div class="fixed bottom-10 left-1/2 -translate-x-1/2 w-[90%] max-w-3xl z-40">
+                    <div class="glass rounded-[32px] p-2 shadow-2xl transition-all focus-within:ring-2 focus-within:ring-white/20">
+                        <textarea id="userInput" rows="1" class="w-full bg-transparent border-none focus:ring-0 p-4 text-white placeholder-gray-500 resize-none overflow-hidden" placeholder="輸入訊息，Shift + Enter 換行..."></textarea>
+                        
+                        <div class="flex items-center justify-between px-4 pb-2">
+                            <div class="flex items-center gap-2">
+                                <!-- 模型選擇下拉 -->
+                                <div class="relative">
+                                    <select id="modelSelect" class="custom-select pr-8">
+                                        <option value="">載入模型中...</option>
+                                    </select>
+                                    <i class="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-[10px] pointer-events-none text-gray-500"></i>
+                                </div>
+                                <i class="fas fa-paperclip text-gray-500 hover:text-white cursor-pointer ml-2"></i>
                             </div>
-                            <h3 class="font-bold">銷售描述專家</h3>
-                            <p class="text-xs text-gray-500 leading-relaxed">協助二手物品的銷售，包括搜尋資訊、定價...</p>
-                        </div>
-                        <div class="assistant-card space-y-3">
-                            <div class="flex justify-between items-start">
-                                <div class="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center text-white"><i class="fas fa-apple-whole"></i></div>
-                                <i class="fas fa-desktop text-gray-600"></i>
-                            </div>
-                            <h3 class="font-bold">Apple Silicon 優化器</h3>
-                            <p class="text-xs text-gray-500 leading-relaxed">專為 M1/M2/M3 最佳化 ComfyUI 安裝與執行...</p>
-                        </div>
-                        <div class="assistant-card space-y-3">
-                            <div class="flex justify-between items-start">
-                                <div class="w-10 h-10 bg-purple-500 rounded-xl flex items-center justify-center text-white"><i class="fas fa-gamepad"></i></div>
-                                <i class="fas fa-microchip text-gray-600"></i>
-                            </div>
-                            <h3 class="font-bold">夢幻智謀師</h3>
-                            <p class="text-xs text-gray-500 leading-relaxed">資深遊戲玩家戰術分析，提供寵物養成與 PK 策略...</p>
-                        </div>
-                        <div class="assistant-card space-y-3">
-                            <div class="flex justify-between items-start">
-                                <div class="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center text-white"><i class="fas fa-clapperboard"></i></div>
-                                <i class="fas fa-bookmark text-gray-600"></i>
-                            </div>
-                            <h3 class="font-bold">短劇編劇大師</h3>
-                            <p class="text-xs text-gray-500 leading-relaxed">專業短視頻劇本創作專家，專注於高衝突...</p>
+                            <button id="sendBtn" class="w-10 h-10 bg-white text-black rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all">
+                                <i class="fas fa-arrow-up"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- 對話內容區 (發送訊息後顯示) -->
-            <div id="chatMessages" class="hidden max-w-4xl mx-auto space-y-10 pt-4"></div>
-        </div>
-    </main>
+            <!-- 設定佈局 (初始隱藏) -->
+            <div id="view-settings" class="hidden flex-1 overflow-y-auto p-8 md:p-20 space-y-12 msg-anim">
+                <h2 class="text-4xl font-bold">偏好設定</h2>
+                
+                <section class="space-y-6">
+                    <h3 class="text-gray-400 font-bold uppercase tracking-widest text-xs">密鑰與供應商</h3>
+                    <div class="glass p-6 rounded-3xl space-y-4">
+                        <p class="text-xs text-gray-500">輸入您的 API Key (Gemini 或 OpenAI 格式)，系統會自動辨識並解除模型限制。</p>
+                        <input type="password" id="customApiKey" class="w-full bg-white/5 border border-white/10 rounded-2xl p-4 focus:ring-1 focus:ring-white/20" placeholder="在此貼上您的 API Key...">
+                        <button onclick="applySettings()" class="bg-white text-black px-6 py-3 rounded-xl font-bold hover:bg-gray-200 transition-all">應用變更並刷新</button>
+                    </div>
+                </section>
 
-    <!-- 設置抽屜 (API Keys) -->
-    <div id="settingsDrawer" class="fixed inset-y-0 right-0 w-80 bg-[#0d0d0d] border-l border-[#222] z-50 translate-x-full transition-transform duration-300 p-6 space-y-8 overflow-y-auto">
-        <div class="flex justify-between items-center">
-            <h2 class="font-bold text-lg">系統設定</h2>
-            <i class="fas fa-times cursor-pointer p-2" onclick="toggleSettings()"></i>
-        </div>
-
-        <div class="space-y-4">
-            <label class="text-xs font-bold text-gray-500 uppercase tracking-widest">選擇模型</label>
-            <select id="modelSelect" class="w-full bg-[#1a1a1a] border-none rounded-xl p-3 text-sm focus:ring-1 focus:ring-white/20"></select>
-        </div>
-
-        <div class="space-y-4">
-            <label class="text-xs font-bold text-gray-500 uppercase tracking-widest">API KEY 注入</label>
-            <input type="password" id="key-gemini" class="w-full bg-[#1a1a1a] border-none rounded-xl p-3 text-sm" placeholder="Gemini API Key">
-            <input type="password" id="key-openai" class="w-full bg-[#1a1a1a] border-none rounded-xl p-3 text-sm" placeholder="OpenAI API Key">
-            <input type="password" id="key-deepseek" class="w-full bg-[#1a1a1a] border-none rounded-xl p-3 text-sm" placeholder="DeepSeek API Key">
-            <button onclick="saveKeys()" class="w-full py-3 bg-white text-black rounded-xl font-bold">更新與應用</button>
-        </div>
-
-        <div class="pt-10 border-t border-[#222] text-[10px] text-gray-600 text-center">
-            CloudAI Hub | WebView Adaptive Mode v3.0
-        </div>
+                <section class="space-y-6">
+                    <h3 class="text-gray-400 font-bold uppercase tracking-widest text-xs">介面自定義</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="glass p-6 rounded-3xl space-y-4">
+                            <label class="text-sm font-bold">主頁大標題</label>
+                            <input type="text" id="inputHeroText" class="w-full bg-white/5 border border-white/10 rounded-xl p-3" placeholder="再次啟動高效模式！">
+                        </div>
+                        <div class="glass p-6 rounded-3xl space-y-4">
+                            <label class="text-sm font-bold">背景模糊 (px)</label>
+                            <input type="range" min="0" max="50" value="20" oninput="updateUI('blur', this.value)" class="w-full accent-white">
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
     </div>
 
     <script>
         const state = {
-            keys: JSON.parse(sessionStorage.getItem('ai_keys') || '{}'),
+            apiKey: sessionStorage.getItem('next_api_key') || '',
+            heroText: localStorage.getItem('next_hero_text') || '再次啟動高效模式！',
             models: [],
-            isHome: true
+            messages: []
         };
 
-        const scrollContent = document.getElementById('scrollContent');
-        const homeHero = document.getElementById('homeHero');
-        const chatMessages = document.getElementById('chatMessages');
-        const userInput = document.getElementById('userInput');
-        const modelSelect = document.getElementById('modelSelect');
+        const dom = {
+            chatHistory: document.getElementById('chatHistory'),
+            heroSection: document.getElementById('hero-section'),
+            userInput: document.getElementById('userInput'),
+            modelSelect: document.getElementById('modelSelect'),
+            displayHeroText: document.getElementById('displayHeroText')
+        };
 
         async function init() {
-            // 載入金鑰到 Input
-            Object.keys(state.keys).forEach(id => {
-                const el = document.getElementById('key-' + id);
-                if(el) el.value = state.keys[id];
-            });
-
+            dom.displayHeroText.textContent = state.heroText;
+            document.getElementById('inputHeroText').value = state.heroText;
+            document.getElementById('customApiKey').value = state.apiKey;
+            
             await reloadModels();
 
-            document.getElementById('sendBtn').onclick = handleSend;
-            userInput.onkeydown = (e) => {
-                if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
-            };
-            
-            modelSelect.onchange = () => {
-                document.getElementById('currentModelName').textContent = modelSelect.options[modelSelect.selectedIndex].text;
-            };
-        }
+            dom.userInput.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
+            });
 
-        function toggleSettings() {
-            document.getElementById('settingsDrawer').classList.toggle('translate-x-full');
-        }
-
-        function saveKeys() {
-            const keys = {
-                gemini: document.getElementById('key-gemini').value.trim(),
-                openai: document.getElementById('key-openai').value.trim(),
-                deepseek: document.getElementById('key-deepseek').value.trim()
-            };
-            sessionStorage.setItem('ai_keys', JSON.stringify(keys));
-            state.keys = keys;
-            reloadModels();
-            toggleSettings();
+            document.getElementById('sendBtn').onclick = sendMessage;
+            dom.userInput.onkeydown = (e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }};
         }
 
         async function reloadModels() {
             try {
-                const headers = {};
-                Object.keys(state.keys).forEach(k => headers[`x-key-${k}`] = state.keys[k]);
+                const headers = state.apiKey ? { 'x-custom-api-key': state.apiKey } : {};
                 const res = await fetch('/api/models', { headers });
                 const data = await res.json();
                 state.models = data.models;
-                modelSelect.innerHTML = data.models.map(m => `<option value="${m.id}" data-provider="${m.provider}">${m.name} ${m.isCustom ? '💎' : ''}</option>`).join('');
-                modelSelect.dispatchEvent(new Event('change'));
+                dom.modelSelect.innerHTML = data.models.map(m => `<option value="${m.id}" data-provider="${m.provider}">${m.name}</option>`).join('');
             } catch (e) { console.error("模型載入失敗"); }
         }
 
-        async function handleSend() {
-            const text = userInput.value.trim();
+        function switchTab(tab) {
+            document.getElementById('view-home').classList.toggle('hidden', tab !== 'home');
+            document.getElementById('view-settings').classList.toggle('hidden', tab !== 'settings');
+            document.getElementById('tab-home').classList.toggle('active', tab === 'home');
+            document.getElementById('tab-settings').classList.toggle('active', tab === 'settings');
+        }
+
+        function updateUI(type, val) {
+            if(type === 'blur') document.documentElement.style.setProperty('--glass-blur', val + 'px');
+        }
+
+        function applySettings() {
+            const newKey = document.getElementById('customApiKey').value.trim();
+            const newHero = document.getElementById('inputHeroText').value.trim();
+            
+            state.apiKey = newKey;
+            sessionStorage.setItem('next_api_key', newKey);
+            
+            state.heroText = newHero;
+            localStorage.setItem('next_hero_text', newHero);
+            dom.displayHeroText.textContent = newHero;
+            
+            alert('設定已套用');
+            reloadModels();
+            switchTab('home');
+        }
+
+        async function sendMessage() {
+            const text = dom.userInput.value.trim();
             if(!text) return;
 
-            if(state.isHome) {
-                homeHero.classList.add('hidden');
-                chatMessages.classList.remove('hidden');
-                state.isHome = false;
-            }
+            // 切換視圖
+            dom.heroSection.classList.add('hidden');
+            dom.chatHistory.classList.remove('hidden');
 
-            appendMessage('user', text);
-            userInput.value = '';
-            
-            const selectedOpt = modelSelect.options[modelSelect.selectedIndex];
-            const aiBubble = appendMessage('assistant', '正在計算中...', selectedOpt.text);
+            appendBubble('user', text);
+            dom.userInput.value = '';
+            dom.userInput.style.height = 'auto';
+
+            const selectedModel = dom.modelSelect.value;
+            const provider = dom.modelSelect.options[dom.modelSelect.selectedIndex].dataset.provider;
+            const aiBubble = appendBubble('assistant', '思考中...', selectedModel);
 
             try {
-                const headers = { 'Content-Type': 'application/json' };
-                Object.keys(state.keys).forEach(k => headers[`x-key-${k}`] = state.keys[k]);
-
+                state.messages.push({ role: 'user', content: text });
                 const res = await fetch('/api/chat', {
                     method: 'POST',
-                    headers,
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'x-custom-api-key': state.apiKey
+                    },
                     body: JSON.stringify({
-                        model: modelSelect.value,
-                        provider: selectedOpt.dataset.provider,
-                        messages: [{ role: 'user', content: text }]
+                        model: selectedModel,
+                        provider: provider,
+                        messages: state.messages
                     })
                 });
                 const data = await res.json();
                 if(data.error) throw new Error(data.error);
-                updateAIBubble(aiBubble, data.content);
+                
+                updateBubble(aiBubble, data.content);
+                state.messages.push({ role: 'assistant', content: data.content });
             } catch (e) {
-                updateAIBubble(aiBubble, "❌ 錯誤: " + e.message);
+                updateBubble(aiBubble, "發生錯誤: " + e.message, true);
             }
         }
 
-        function appendMessage(role, content, modelName = "") {
+        function appendBubble(role, content, model = "") {
             const div = document.createElement('div');
-            div.className = `flex gap-4 ${role === 'user' ? 'justify-end' : 'justify-start'} group`;
-            
-            const inner = `
-                <div class="flex flex-col ${role === 'user' ? 'items-end' : 'items-start'} max-w-[90%] md:max-w-[80%]">
-                    ${role === 'assistant' ? `<div class="text-[10px] font-bold text-gray-500 mb-2 uppercase tracking-widest">${modelName}</div>` : ''}
-                    <div class="${role === 'user' ? 'bg-[#fff] text-[#000] rounded-[20px] rounded-br-none' : 'bg-[#161616] border border-[#222] text-[#e1e1e1] rounded-[20px] rounded-bl-none'} p-4 shadow-lg">
-                        <div class="text-[15px] leading-relaxed whitespace-pre-wrap">${content}</div>
-                    </div>
+            div.className = `flex flex-col ${role === 'user' ? 'items-end' : 'items-start'} msg-anim w-full`;
+            div.innerHTML = `
+                ${role === 'assistant' ? `<div class="text-[10px] font-bold text-gray-600 mb-2 uppercase tracking-widest pl-2">${model}</div>` : ''}
+                <div class="max-w-[85%] p-5 rounded-[24px] ${role === 'user' ? 'bg-white text-black rounded-br-none' : 'glass rounded-bl-none'} shadow-xl">
+                    <div class="text-sm leading-relaxed whitespace-pre-wrap">${content}</div>
                 </div>
             `;
-            div.innerHTML = inner;
-            chatMessages.appendChild(div);
-            scrollContent.scrollTop = scrollContent.scrollHeight;
+            dom.chatHistory.appendChild(div);
+            document.getElementById('view-home').scrollTop = document.getElementById('view-home').scrollHeight;
             return div;
         }
 
-        function updateAIBubble(div, content) {
-            const body = div.querySelector('.p-4 div');
-            body.textContent = content;
-            scrollContent.scrollTop = scrollContent.scrollHeight;
+        function updateBubble(div, content, isError = false) {
+            const target = div.querySelector('.text-sm');
+            if(isError) target.classList.add('text-red-400');
+            target.textContent = content;
+            document.getElementById('view-home').scrollTop = document.getElementById('view-home').scrollHeight;
         }
 
         init();
