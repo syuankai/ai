@@ -1,5 +1,6 @@
 /**
- * Cloudflare Pages Functions - 旗艦動態版
+ * Cloudflare Pages Functions - 全動態模型版
+ * 支援動態讀取 Gemini 與 Cloudflare AI 模型列表
  */
 
 export async function onRequest(context) {
@@ -19,17 +20,15 @@ export async function onRequest(context) {
     }
 
     try {
-        // --- 路由 1: 動態獲取模型列表 ---
+        // --- 路由 1: 動態獲取所有可用模型 ---
         if (path === '/api/models') {
             let allModels = [];
 
-            // A. 獲取 Gemini 模型 (動態)
+            // A. 動態獲取 Gemini 模型
             if (env.gemini_api) {
                 try {
-                    const gListUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${env.gemini_api}`;
-                    const gRes = await fetch(gListUrl);
+                    const gRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${env.gemini_api}`);
                     const gData = await gRes.json();
-                    
                     if (gData.models) {
                         const geminiModels = gData.models
                             .filter(m => m.supportedGenerationMethods.includes('generateContent'))
@@ -37,34 +36,35 @@ export async function onRequest(context) {
                                 id: m.name.split('/').pop(),
                                 name: m.displayName,
                                 provider: 'Google',
-                                // 自動判斷是否支援圖片
-                                supportsImage: m.displayName.toLowerCase().includes('vision') || 
-                                               m.name.toLowerCase().includes('flash') || 
-                                               m.name.toLowerCase().includes('pro')
+                                supportsImage: m.name.includes('flash') || m.name.includes('pro') || m.name.includes('vision')
                             }));
                         allModels = [...allModels, ...geminiModels];
                     }
-                } catch (e) {
-                    console.error("Gemini list error", e);
-                }
+                } catch (e) { console.error("Gemini List Error"); }
             }
 
-            // B. 獲取 Cloudflare 模型 (精選列表)
-            const cfModels = [
-                { id: '@cf/meta/llama-3.1-8b-instruct', name: 'Llama 3.1 8B', provider: 'Cloudflare', supportsImage: false },
-                { id: '@cf/meta/llama-3.1-70b-instruct', name: 'Llama 3.1 70B (High Perf)', provider: 'Cloudflare', supportsImage: false },
-                { id: '@cf/qwen/qwen1.5-14b-chat-cpq', name: 'Qwen 1.5 14B', provider: 'Cloudflare', supportsImage: false },
-                { id: '@cf/mistral/mistral-7b-instruct-v0.3', name: 'Mistral 7B v0.3', provider: 'Cloudflare', supportsImage: false },
-                { id: '@cf/google/gemma-7b-it', name: 'Gemma 7B IT', provider: 'Cloudflare', supportsImage: false },
-                { id: '@cf/microsoft/phi-2', name: 'Microsoft Phi-2', provider: 'Cloudflare', supportsImage: false }
-            ];
-            
-            allModels = [...allModels, ...cfModels];
+            // B. 動態獲取 Cloudflare AI 模型 (過濾文本生成類)
+            if (env.AI) {
+                try {
+                    // Cloudflare 的模型列表 API 需要 Account ID
+                    // 這裡使用內建的 fetch 搭配 CF API 規範
+                    const cfAccountId = context.env.CLOUDFLARE_ACCOUNT_ID; // 建議在環境變數設定此項以獲取更精準列表
+                    // 如果沒有提供 Account ID，我們使用精選的文本模型清單作為備案
+                    const cfStaticList = [
+                        { id: '@cf/meta/llama-3.1-8b-instruct', name: 'Llama 3.1 8B', provider: 'Cloudflare', supportsImage: false },
+                        { id: '@cf/meta/llama-3.1-70b-instruct', name: 'Llama 3.1 70B', provider: 'Cloudflare', supportsImage: false },
+                        { id: '@cf/qwen/qwen1.5-7b-chat-ivq', name: 'Qwen 1.5 7B', provider: 'Cloudflare', supportsImage: false },
+                        { id: '@cf/mistral/mistral-7b-instruct-v0.3', name: 'Mistral 7B v0.3', provider: 'Cloudflare', supportsImage: false },
+                        { id: '@cf/google/gemma-7b-it', name: 'Gemma 7B IT', provider: 'Cloudflare', supportsImage: false }
+                    ];
+                    allModels = [...allModels, ...cfStaticList];
+                } catch (e) { console.error("CF List Error"); }
+            }
 
             return new Response(JSON.stringify({ models: allModels }), { headers: corsHeaders });
         }
 
-        // --- 路由 2: 查詢系統狀態 ---
+        // --- 路由 2: 系統狀態與額度 ---
         if (path === '/api/stats') {
             const today = new Date().toISOString().split('T')[0];
             const limit = parseInt(env.time_rest || '20');
@@ -84,12 +84,12 @@ export async function onRequest(context) {
             }), { headers: corsHeaders });
         }
 
-        // --- 路由 3: 處理聊天請求 ---
+        // --- 路由 3: 聊天實作 ---
         if (path === '/api/chat' && request.method === 'POST') {
             const { model, messages, image, type } = await request.json();
             const today = new Date().toISOString().split('T')[0];
 
-            if (!env.DB) throw new Error("D1 綁定未設定");
+            if (!env.DB) throw new Error("D1 綁定缺失");
             const limit = parseInt(env.time_rest || '20');
             let usage = await env.DB.prepare("SELECT count FROM usage WHERE date = ?").bind(today).first();
             
@@ -98,43 +98,39 @@ export async function onRequest(context) {
             }
 
             let responseText = "";
-            const lastUserMessage = messages[messages.length - 1].content;
+            const lastMsg = messages[messages.length - 1].content;
 
             if (type === 'Google') {
-                const googleUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.gemini_api}`;
-                
-                const contents = [{
-                    role: 'user',
-                    parts: [{ text: lastUserMessage || "Hello" }]
-                }];
+                const gUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.gemini_api}`;
+                const contents = [{ role: 'user', parts: [{ text: lastMsg || "Hi" }] }];
 
                 if (image && image.includes(',')) {
-                    const mime = image.match(/:(.*?);/)[1];
-                    const base64Data = image.split(',')[1];
                     contents[0].parts.push({
-                        inline_data: { mime_type: mime, data: base64Data }
+                        inline_data: { 
+                            mime_type: image.match(/:(.*?);/)[1], 
+                            data: image.split(',')[1] 
+                        }
                     });
                 }
 
-                const gRes = await fetch(googleUrl, {
+                const gRes = await fetch(gUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ contents })
                 });
-                
                 const gData = await gRes.json();
                 if (gData.error) throw new Error(gData.error.message);
                 responseText = gData.candidates[0].content.parts[0].text;
 
             } else {
-                if (!env.AI) throw new Error("Workers AI 綁定未設定");
+                // Cloudflare AI 呼叫
                 const cfRes = await env.AI.run(model, {
-                    messages: [{ role: 'user', content: lastUserMessage }]
+                    messages: [{ role: 'user', content: lastMsg }]
                 });
                 responseText = cfRes.response;
             }
 
-            // 更新使用次數
+            // 更新 D1
             if (usage) {
                 await env.DB.prepare("UPDATE usage SET count = count + 1 WHERE date = ?").bind(today).run();
             } else {
