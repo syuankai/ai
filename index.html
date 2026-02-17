@@ -1,305 +1,298 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Send, 
-  Settings, 
-  Image as ImageIcon, 
-  RefreshCw, 
-  Cpu, 
-  Database, 
-  Activity,
-  User,
-  Bot,
-  Trash2,
-  AlertCircle
-} from 'lucide-react';
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudAI Hub | 旗艦版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .glass-morphism {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .message-gradient-user {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 h-screen flex flex-col overflow-hidden">
 
-const App = () => {
-  // 狀態管理
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
-  const [models, setModels] = useState([]);
-  const [selectedModel, setSelectedModel] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [image, setImage] = useState(null);
-  const [placeholder, setPlaceholder] = useState('和 AI 說點什麼...');
-  const [systemStats, setSystemStats] = useState({
-    functions: 'unknown',
-    gemini: 'unknown',
-    d1: 'unknown',
-    cf_ai: 'unknown',
-    remaining_limit: 0
-  });
-  const [showSettings, setShowSettings] = useState(false);
-  
-  const scrollRef = useRef(null);
-
-  // 初始化：讀取模型與系統狀態
-  useEffect(() => {
-    fetchModels();
-    checkStats();
-  }, []);
-
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
-
-  const fetchModels = async () => {
-    try {
-      const res = await fetch('/api/models');
-      const data = await res.json();
-      setModels(data.models || []);
-      if (data.models?.length > 0) setSelectedModel(data.models[0]);
-    } catch (err) {
-      console.error('無法獲取模型列表', err);
-    }
-  };
-
-  const checkStats = async () => {
-    try {
-      const res = await fetch('/api/stats');
-      const data = await res.json();
-      setSystemStats(data);
-    } catch (err) {
-      console.error('統計數據獲取失敗', err);
-    }
-  };
-
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setImage(reader.result);
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const sendMessage = async () => {
-    if (!input.trim() && !image) return;
-    if (systemStats.remaining_limit <= 0) {
-      alert('今日使用額度已達上限');
-      return;
-    }
-
-    const userMsg = { role: 'user', content: input, image: image };
-    setMessages(prev => [...prev, userMsg]);
-    setInput('');
-    setImage(null);
-    setLoading(true);
-
-    try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: selectedModel.id,
-          messages: [...messages, userMsg],
-          image: image,
-          type: selectedModel.provider
-        }),
-      });
-
-      const data = await response.json();
-      if (data.error) throw new Error(data.error);
-
-      setMessages(prev => [...prev, { role: 'assistant', content: data.content }]);
-      checkStats(); // 更新剩餘次數
-    } catch (err) {
-      setMessages(prev => [...prev, { role: 'error', content: `錯誤: ${err.message}` }]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const clearChat = () => {
-    setMessages([]);
-  };
-
-  return (
-    <div className="flex flex-col h-screen bg-gray-50 text-gray-900 font-sans">
-      {/* Header */}
-      <header className="bg-white border-b px-6 py-4 flex justify-between items-center shadow-sm">
-        <div className="flex items-center gap-2">
-          <div className="bg-blue-600 p-2 rounded-lg">
-            <Cpu className="text-white w-5 h-5" />
-          </div>
-          <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
-            CloudAI Hub
-          </h1>
+    <!-- Header -->
+    <header class="glass-morphism sticky top-0 z-30 px-6 py-4 flex justify-between items-center border-b border-slate-200">
+        <div class="flex items-center gap-3">
+            <div class="bg-blue-600 p-2.5 rounded-xl shadow-lg shadow-blue-200">
+                <i class="fas fa-microchip text-white text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight text-slate-800">CloudAI Hub</h1>
+                <p class="text-[10px] uppercase tracking-widest text-blue-600 font-bold">Hybrid AI Platform</p>
+            </div>
         </div>
         
-        <div className="flex items-center gap-4">
-          <select 
-            className="bg-gray-100 border-none rounded-full px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-            value={selectedModel?.id || ''}
-            onChange={(e) => setSelectedModel(models.find(m => m.id === e.target.value))}
-          >
-            {models.map(m => (
-              <option key={m.id} value={m.id}>{m.name} ({m.provider})</option>
-            ))}
-          </select>
-          
-          <button 
-            onClick={() => setShowSettings(!showSettings)}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-          >
-            <Settings className="w-5 h-5 text-gray-600" />
-          </button>
+        <div class="flex items-center gap-3">
+            <select id="modelSelect" class="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm">
+                <option value="">載入中...</option>
+            </select>
+            <button id="settingsBtn" class="p-2.5 hover:bg-white hover:shadow-md rounded-xl transition-all text-slate-500">
+                <i class="fas fa-sliders-h text-lg"></i>
+            </button>
         </div>
-      </header>
+    </header>
 
-      <main className="flex-1 overflow-hidden flex flex-col relative">
-        {/* Settings Overlay */}
-        {showSettings && (
-          <div className="absolute top-0 right-0 w-80 bg-white shadow-xl border-l z-20 h-full p-6 animate-in slide-in-from-right">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="font-bold text-lg">系統狀態</h2>
-              <button onClick={() => setShowSettings(false)} className="text-gray-400 hover:text-gray-600">✕</button>
-            </div>
-            
-            <div className="space-y-4">
-              <StatusItem icon={<Activity />} label="Pages Functions" status={systemStats.functions} />
-              <StatusItem icon={<Bot />} label="Gemini API" status={systemStats.gemini} />
-              <StatusItem icon={<Database />} label="D1 Database" status={systemStats.d1} />
-              <StatusItem icon={<Cpu />} label="Cloudflare AI" status={systemStats.cf_ai} />
-              
-              <div className="mt-8 p-4 bg-blue-50 rounded-xl">
-                <p className="text-sm text-blue-600 font-medium mb-1">今日剩餘額度</p>
-                <p className="text-2xl font-bold text-blue-800">{systemStats.remaining_limit}</p>
-              </div>
-
-              <div className="mt-4">
-                <label className="text-sm font-medium text-gray-700">自定義提示詞</label>
-                <input 
-                  type="text" 
-                  className="w-full mt-1 px-3 py-2 border rounded-lg text-sm"
-                  placeholder="輸入預設提示..."
-                  value={placeholder}
-                  onChange={(e) => setPlaceholder(e.target.value)}
-                />
-              </div>
-              
-              <button 
-                onClick={clearChat}
-                className="w-full mt-6 flex items-center justify-center gap-2 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-red-100"
-              >
-                <Trash2 className="w-4 h-4" /> 清除對話
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Chat Area */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6">
-          {messages.length === 0 && (
-            <div className="h-full flex flex-col items-center justify-center text-gray-400 space-y-4">
-              <div className="bg-gray-100 p-6 rounded-full">
-                <Bot className="w-12 h-12" />
-              </div>
-              <p className="text-lg">開始與探索 AI 的無限可能</p>
-            </div>
-          )}
-          
-          {messages.map((msg, i) => (
-            <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[80%] rounded-2xl p-4 shadow-sm ${
-                msg.role === 'user' 
-                  ? 'bg-blue-600 text-white rounded-tr-none' 
-                  : msg.role === 'error'
-                  ? 'bg-red-50 text-red-700 border border-red-100'
-                  : 'bg-white text-gray-800 border rounded-tl-none'
-              }`}>
-                {msg.image && (
-                  <img src={msg.image} alt="User upload" className="max-w-xs rounded-lg mb-2 border border-blue-400" />
-                )}
-                <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
-              </div>
-            </div>
-          ))}
-          {loading && (
-            <div className="flex justify-start">
-              <div className="bg-white border rounded-2xl p-4 shadow-sm rounded-tl-none flex items-center gap-2">
-                <div className="flex space-x-1">
-                  <div className="w-2 h-2 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                  <div className="w-2 h-2 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                  <div className="w-2 h-2 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+    <!-- Main Container -->
+    <main class="flex-1 flex overflow-hidden relative">
+        
+        <!-- Chat Area -->
+        <section class="flex-1 flex flex-col relative bg-white/50">
+            <div id="chatBox" class="flex-1 overflow-y-auto p-4 md:p-10 space-y-6 custom-scrollbar">
+                <!-- Welcome Message -->
+                <div id="welcome" class="h-full flex flex-col items-center justify-center text-slate-400 space-y-6 animate-fade-in">
+                    <div class="w-20 h-20 bg-white shadow-xl rounded-3xl flex items-center justify-center border border-slate-100">
+                        <i class="fas fa-robot text-4xl text-blue-500"></i>
+                    </div>
+                    <div class="text-center">
+                        <h2 class="text-xl font-semibold text-slate-700">準備好開始對話了嗎？</h2>
+                        <p class="text-sm">選擇一個模型並發送訊息以開始</p>
+                    </div>
                 </div>
-              </div>
             </div>
-          )}
-        </div>
 
-        {/* Input Area */}
-        <div className="p-4 md:p-6 bg-white border-t">
-          <div className="max-w-4xl mx-auto relative">
-            {image && (
-              <div className="absolute bottom-full mb-4 left-0 p-2 bg-white border rounded-xl shadow-lg flex items-center gap-2">
-                <img src={image} className="w-20 h-20 object-cover rounded" alt="Preview" />
-                <button onClick={() => setImage(null)} className="p-1 bg-red-500 text-white rounded-full">✕</button>
-              </div>
-            )}
+            <!-- Input Area -->
+            <div class="p-6 bg-white border-t border-slate-100 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.05)]">
+                <div class="max-w-4xl mx-auto">
+                    <div id="imagePreviewContainer" class="hidden mb-4 relative inline-block">
+                        <img id="imagePreview" src="" class="w-24 h-24 object-cover rounded-2xl border-2 border-blue-500 shadow-md">
+                        <button onclick="clearImage()" class="absolute -top-2 -right-2 bg-red-500 text-white w-6 h-6 rounded-full text-xs shadow-lg"><i class="fas fa-times"></i></button>
+                    </div>
+                    
+                    <div class="flex items-end gap-3 bg-slate-100/80 rounded-2xl p-2 border border-slate-200 focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-500/10 focus-within:border-blue-500 transition-all">
+                        <label id="imageUploadBtn" class="hidden p-3 cursor-pointer hover:bg-white rounded-xl transition-all text-slate-500">
+                            <i class="fas fa-image text-xl"></i>
+                            <input type="file" id="fileInput" accept="image/*" class="hidden">
+                        </label>
+                        
+                        <textarea id="userInput" class="flex-1 bg-transparent border-none focus:ring-0 resize-none py-3 px-2 max-h-40 min-h-[48px] text-slate-700 leading-relaxed" rows="1" placeholder="和 AI 說點什麼..."></textarea>
+                        
+                        <button id="sendBtn" class="p-3.5 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 hover:-translate-y-0.5 active:scale-95 transition-all disabled:opacity-50 disabled:pointer-events-none">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sidebar / Settings -->
+        <aside id="settingsPanel" class="hidden absolute inset-y-0 right-0 w-80 bg-white shadow-2xl border-l border-slate-100 z-40 p-6 flex flex-col translate-x-full transition-transform duration-300">
+            <div class="flex justify-between items-center mb-8">
+                <h3 class="font-bold text-lg text-slate-800">系統控制台</h3>
+                <button id="closeSettings" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-xl"></i></button>
+            </div>
+
+            <div class="space-y-4 overflow-y-auto flex-1 pr-2 custom-scrollbar">
+                <div class="space-y-3">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">服務狀態</p>
+                    <div id="statsList" class="space-y-2">
+                        <!-- Status Items will be injected here -->
+                    </div>
+                </div>
+
+                <div class="pt-6 space-y-3">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">介面設定</p>
+                    <div class="space-y-1">
+                        <label class="text-xs font-medium text-slate-500">輸入框提示文字</label>
+                        <input type="text" id="placeholderInput" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="和 AI 說點什麼...">
+                    </div>
+                </div>
+
+                <div class="pt-6">
+                    <button id="clearChat" class="w-full flex items-center justify-center gap-2 py-3 text-red-500 hover:bg-red-50 rounded-xl border border-red-100 transition-all font-medium text-sm">
+                        <i class="fas fa-trash-alt text-xs"></i> 清除歷史紀錄
+                    </button>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <script>
+        const state = {
+            models: [],
+            selectedModel: null,
+            image: null,
+            loading: false
+        };
+
+        const chatBox = document.getElementById('chatBox');
+        const modelSelect = document.getElementById('modelSelect');
+        const userInput = document.getElementById('userInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const settingsPanel = document.getElementById('settingsPanel');
+        const imageUploadBtn = document.getElementById('imageUploadBtn');
+        const imagePreview = document.getElementById('imagePreview');
+        const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+
+        // 初始化
+        async function init() {
+            await fetchModels();
+            await updateStats();
             
-            <div className="flex items-end gap-2 bg-gray-100 rounded-2xl p-2 focus-within:ring-2 focus-within:ring-blue-500 transition-all">
-              {selectedModel?.supportsImage && (
-                <label className="p-3 cursor-pointer hover:bg-gray-200 rounded-xl transition-colors text-gray-500">
-                  <ImageIcon className="w-6 h-6" />
-                  <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
-                </label>
-              )}
-              
-              <textarea
-                className="flex-1 bg-transparent border-none focus:ring-0 resize-none py-3 px-2 max-h-40 min-h-[50px]"
-                rows="1"
-                placeholder={placeholder}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
+            // 事件監聽
+            document.getElementById('settingsBtn').onclick = () => {
+                settingsPanel.classList.remove('hidden');
+                setTimeout(() => settingsPanel.classList.remove('translate-x-full'), 10);
+            };
+            document.getElementById('closeSettings').onclick = () => {
+                settingsPanel.classList.add('translate-x-full');
+                setTimeout(() => settingsPanel.classList.add('hidden'), 300);
+            };
+            document.getElementById('placeholderInput').oninput = (e) => {
+                userInput.placeholder = e.target.value || '和 AI 說點什麼...';
+            };
+            document.getElementById('fileInput').onchange = handleImage;
+            sendBtn.onclick = sendMessage;
+            document.getElementById('clearChat').onclick = () => {
+                chatBox.innerHTML = '';
+                document.getElementById('welcome').classList.remove('hidden');
+            };
+            
+            userInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     sendMessage();
-                  }
-                }}
-              />
-              
-              <button 
-                onClick={sendMessage}
-                disabled={loading || (!input.trim() && !image)}
-                className={`p-3 rounded-xl transition-all ${
-                  loading || (!input.trim() && !image) 
-                  ? 'text-gray-400' 
-                  : 'bg-blue-600 text-white shadow-md hover:bg-blue-700 active:scale-95'
-                }`}
-              >
-                {loading ? <RefreshCw className="w-6 h-6 animate-spin" /> : <Send className="w-6 h-6" />}
-              </button>
-            </div>
-          </div>
-        </div>
-      </main>
-    </div>
-  );
-};
+                }
+            });
 
-const StatusItem = ({ icon, label, status }) => {
-  const getStatusColor = (s) => {
-    if (s === 'online') return 'bg-green-500';
-    if (s === 'offline') return 'bg-red-500';
-    return 'bg-gray-300';
-  };
+            modelSelect.onchange = (e) => {
+                state.selectedModel = state.models.find(m => m.id === e.target.value);
+                imageUploadBtn.classList.toggle('hidden', !state.selectedModel?.supportsImage);
+            };
+        }
 
-  return (
-    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
-      <div className="flex items-center gap-3 text-gray-600">
-        {React.cloneElement(icon, { size: 18 })}
-        <span className="text-sm font-medium">{label}</span>
-      </div>
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-gray-400 capitalize">{status}</span>
-        <div className={`w-2.5 h-2.5 rounded-full ${getStatusColor(status)} shadow-sm`}></div>
-      </div>
-    </div>
-  );
-};
+        async function fetchModels() {
+            try {
+                const res = await fetch('/api/models');
+                const data = await res.json();
+                state.models = data.models;
+                modelSelect.innerHTML = data.models.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+                state.selectedModel = data.models[0];
+                imageUploadBtn.classList.toggle('hidden', !state.selectedModel?.supportsImage);
+            } catch (err) {
+                console.error('Failed to load models');
+            }
+        }
 
-export default App;
+        async function updateStats() {
+            try {
+                const res = await fetch('/api/stats');
+                const data = await res.json();
+                const statsContainer = document.getElementById('statsList');
+                const items = [
+                    { label: 'Pages Functions', status: data.functions, icon: 'fa-code' },
+                    { label: 'Gemini API', status: data.gemini, icon: 'fa-bolt' },
+                    { label: 'D1 Database', status: data.d1, icon: 'fa-database' },
+                    { label: 'Cloudflare AI', status: data.cf_ai, icon: 'fa-brain' }
+                ];
+                
+                statsContainer.innerHTML = items.map(i => `
+                    <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <div class="flex items-center gap-3">
+                            <i class="fas ${i.icon} text-slate-400 text-sm"></i>
+                            <span class="text-sm font-medium text-slate-600">${i.label}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] uppercase font-bold ${i.status === 'online' ? 'text-green-500' : 'text-red-400'}">${i.status}</span>
+                            <div class="w-2 h-2 rounded-full ${i.status === 'online' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-red-400'}"></div>
+                        </div>
+                    </div>
+                `).join('') + `
+                    <div class="mt-4 p-4 bg-blue-600 rounded-2xl text-white">
+                        <p class="text-[10px] font-bold opacity-80 uppercase tracking-tighter">今日剩餘額度</p>
+                        <p class="text-2xl font-bold">${data.remaining_limit}</p>
+                    </div>
+                `;
+            } catch (e) {}
+        }
+
+        function handleImage(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    state.image = ev.target.result;
+                    imagePreview.src = state.image;
+                    imagePreviewContainer.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function clearImage() {
+            state.image = null;
+            imagePreviewContainer.classList.add('hidden');
+            document.getElementById('fileInput').value = '';
+        }
+
+        async function sendMessage() {
+            const text = userInput.value.trim();
+            if (!text && !state.image) return;
+            if (state.loading) return;
+
+            document.getElementById('welcome').classList.add('hidden');
+            appendMessage('user', text, state.image);
+            
+            userInput.value = '';
+            state.loading = true;
+            sendBtn.disabled = true;
+
+            try {
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        model: state.selectedModel.id,
+                        messages: [{ role: 'user', content: text }],
+                        image: state.image,
+                        type: state.selectedModel.provider
+                    })
+                });
+                const data = await res.json();
+                if (data.error) throw new Error(data.error);
+                appendMessage('assistant', data.content);
+            } catch (err) {
+                appendMessage('system', `錯誤: ${err.message}`);
+            } finally {
+                state.loading = false;
+                sendBtn.disabled = false;
+                clearImage();
+                updateStats();
+            }
+        }
+
+        function appendMessage(role, content, image = null) {
+            const div = document.createElement('div');
+            div.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`;
+            
+            const inner = `
+                <div class="max-w-[85%] p-4 rounded-2xl shadow-sm ${
+                    role === 'user' 
+                    ? 'message-gradient-user text-white rounded-tr-none' 
+                    : role === 'system' ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-white border border-slate-100 text-slate-700 rounded-tl-none'
+                }">
+                    ${image ? `<img src="${image}" class="max-w-xs rounded-xl mb-3 border border-white/20">` : ''}
+                    <p class="whitespace-pre-wrap leading-relaxed text-sm md:text-base">${content}</p>
+                </div>
+            `;
+            div.innerHTML = inner;
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        init();
+    </script>
+</body>
+</html>
