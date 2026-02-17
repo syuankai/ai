@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>LobeNext | 旗艦自定義版</title>
+    <title>LobeNext | 視覺旗艦版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
         
         :root {
-            --primary: #ffffff;
-            --glass-bg: rgba(20, 20, 20, 0.7);
-            --glass-blur: 20px;
-            --hero-font-size: 3rem;
+            --glass-bg: rgba(25, 25, 25, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-blur: 24px;
+            --accent: #ffffff;
         }
 
         body {
@@ -24,86 +24,119 @@
             height: 100vh;
             margin: 0;
             overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .glass {
             background: var(--glass-bg);
             backdrop-filter: blur(var(--glass-blur));
             -webkit-backdrop-filter: blur(var(--glass-blur));
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--glass-border);
         }
 
         .hero-text {
-            font-size: var(--hero-font-size);
+            font-size: clamp(2rem, 8vw, 3.5rem);
             font-weight: 800;
-            background: linear-gradient(to bottom, #fff 0%, #888 100%);
+            background: linear-gradient(to bottom, #fff 30%, rgba(255,255,255,0.4) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            letter-spacing: -0.02em;
         }
 
         /* 側邊導覽 */
         .nav-item {
-            @apply flex items-center justify-center w-12 h-12 rounded-2xl transition-all cursor-pointer text-gray-500;
+            @apply flex items-center justify-center w-12 h-12 rounded-2xl transition-all cursor-pointer text-gray-500 relative;
         }
-        .nav-item.active { @apply bg-white/10 text-white shadow-lg; }
-
-        /* 自定義下拉選單 */
-        .custom-select {
-            @apply appearance-none bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold cursor-pointer hover:bg-white/10 transition-all focus:outline-none;
+        .nav-item.active { @apply bg-white/10 text-white; }
+        .nav-item.active::after {
+            content: '';
+            position: absolute;
+            left: -4px;
+            width: 4px;
+            height: 16px;
+            background: white;
+            border-radius: 0 4px 4px 0;
         }
 
-        /* 隱藏捲軸 */
-        ::-webkit-scrollbar { width: 0px; background: transparent; }
+        /* 自定義下拉選單模擬 */
+        .select-trigger {
+            @apply flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-[11px] font-bold cursor-pointer hover:bg-white/10 transition-all select-none;
+        }
+        .select-options {
+            @apply absolute bottom-full mb-3 left-0 w-64 glass rounded-2xl p-2 shadow-2xl z-[100] hidden flex-col max-h-60 overflow-y-auto;
+            animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        .select-option {
+            @apply flex items-center justify-between px-3 py-2 rounded-xl text-xs hover:bg-white/10 cursor-pointer transition-all mb-1 last:mb-0;
+        }
+        .select-option.selected { @apply bg-white/10 text-white; }
+
+        @keyframes popIn {
+            from { opacity: 0; transform: scale(0.95) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        /* 滾動條美化 */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
 
         .chat-container { scroll-behavior: smooth; }
-        
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .msg-anim { animation: fadeIn 0.3s ease-out forwards; }
+        .msg-anim { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
     <div class="flex h-full w-full relative">
         <!-- 左側極簡導覽 -->
-        <aside class="w-16 flex flex-col items-center py-6 border-r border-white/5 shrink-0 z-50">
-            <div class="mb-10"><i class="fas fa-ghost text-2xl"></i></div>
-            <div class="flex flex-col gap-4">
-                <div onclick="switchTab('home')" id="tab-home" class="nav-item active"><i class="fas fa-house"></i></div>
-                <div onclick="switchTab('settings')" id="tab-settings" class="nav-item"><i class="fas fa-sliders"></i></div>
+        <aside class="w-16 flex flex-col items-center py-8 border-r border-white/5 shrink-0 z-50 bg-black/20">
+            <div class="mb-12"><i class="fas fa-cube text-white text-2xl"></i></div>
+            <div class="flex flex-col gap-6">
+                <div onclick="switchTab('home')" id="tab-home" class="nav-item active"><i class="fas fa-comment-alt"></i></div>
+                <div onclick="switchTab('settings')" id="tab-settings" class="nav-item"><i class="fas fa-cog"></i></div>
             </div>
-            <div class="mt-auto nav-item"><img src="https://api.dicebear.com/7.x/bottts/svg?seed=user" class="w-8 h-8 rounded-full"></div>
+            <div class="mt-auto nav-item opacity-80"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Lucky" class="w-8 h-8 rounded-full border border-white/10"></div>
         </aside>
 
         <!-- 主區域 -->
         <main class="flex-1 flex flex-col relative overflow-hidden">
             
-            <!-- 首頁佈局 -->
-            <div id="view-home" class="flex-1 flex flex-col items-center justify-center px-6 overflow-y-auto chat-container">
-                <div id="hero-section" class="text-center mb-12 space-y-4 msg-anim">
+            <!-- 首頁 / 聊天區域 -->
+            <div id="view-home" class="flex-1 flex flex-col px-4 md:px-0 overflow-y-auto chat-container pt-14">
+                
+                <!-- Hero Section -->
+                <div id="hero-section" class="flex-1 flex flex-col items-center justify-center text-center space-y-6">
                     <h1 id="displayHeroText" class="hero-text">再次啟動高效模式！</h1>
-                    <p class="text-gray-500 text-sm">由強大的多雲 AI 驅動，探索無限可能</p>
+                    <p class="text-gray-500 text-sm max-w-md mx-auto leading-relaxed">接入 Gemini、OpenAI 與 DeepSeek，體驗下一代生成式 AI 對話系統</p>
                 </div>
 
-                <!-- 訊息流 (初始隱藏) -->
-                <div id="chatHistory" class="hidden w-full max-w-3xl space-y-8 pb-32"></div>
+                <!-- 訊息流 -->
+                <div id="chatHistory" class="hidden w-full max-w-3xl mx-auto space-y-10 pb-40 px-4"></div>
 
-                <!-- 浮動輸入框 -->
-                <div class="fixed bottom-10 left-1/2 -translate-x-1/2 w-[90%] max-w-3xl z-40">
-                    <div class="glass rounded-[32px] p-2 shadow-2xl transition-all focus-within:ring-2 focus-within:ring-white/20">
-                        <textarea id="userInput" rows="1" class="w-full bg-transparent border-none focus:ring-0 p-4 text-white placeholder-gray-500 resize-none overflow-hidden" placeholder="輸入訊息，Shift + Enter 換行..."></textarea>
+                <!-- 底部輸入模組 -->
+                <div class="fixed bottom-8 left-1/2 -translate-x-1/2 w-[95%] max-w-3xl z-40">
+                    <div class="glass rounded-[28px] p-2 shadow-2xl transition-all focus-within:border-white/20">
+                        <textarea id="userInput" rows="1" class="w-full bg-transparent border-none focus:ring-0 p-4 text-white placeholder-gray-500 resize-none overflow-hidden max-h-48" placeholder="輸入訊息..."></textarea>
                         
-                        <div class="flex items-center justify-between px-4 pb-2">
-                            <div class="flex items-center gap-2">
-                                <!-- 模型選擇下拉 -->
+                        <div class="flex items-center justify-between px-3 pb-2">
+                            <div class="flex items-center gap-3 relative">
+                                <!-- 自定義模擬下拉選單 -->
                                 <div class="relative">
-                                    <select id="modelSelect" class="custom-select pr-8">
-                                        <option value="">載入模型中...</option>
-                                    </select>
-                                    <i class="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-[10px] pointer-events-none text-gray-500"></i>
+                                    <div id="modelTrigger" class="select-trigger" onclick="toggleModelList(event)">
+                                        <i class="fas fa-microchip text-[10px] opacity-50"></i>
+                                        <span id="selectedModelLabel">載入模型中...</span>
+                                        <i class="fas fa-chevron-up text-[8px] opacity-40"></i>
+                                    </div>
+                                    <div id="modelOptions" class="select-options">
+                                        <!-- 動態注入選項 -->
+                                    </div>
                                 </div>
-                                <i class="fas fa-paperclip text-gray-500 hover:text-white cursor-pointer ml-2"></i>
+                                <div class="w-[1px] h-4 bg-white/10"></div>
+                                <i class="fas fa-paperclip text-gray-500 hover:text-white cursor-pointer text-sm transition-colors"></i>
                             </div>
-                            <button id="sendBtn" class="w-10 h-10 bg-white text-black rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all">
+                            
+                            <button id="sendBtn" class="w-10 h-10 bg-white text-black rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-lg">
                                 <i class="fas fa-arrow-up"></i>
                             </button>
                         </div>
@@ -111,32 +144,43 @@
                 </div>
             </div>
 
-            <!-- 設定佈局 (初始隱藏) -->
-            <div id="view-settings" class="hidden flex-1 overflow-y-auto p-8 md:p-20 space-y-12 msg-anim">
-                <h2 class="text-4xl font-bold">偏好設定</h2>
-                
-                <section class="space-y-6">
-                    <h3 class="text-gray-400 font-bold uppercase tracking-widest text-xs">密鑰與供應商</h3>
-                    <div class="glass p-6 rounded-3xl space-y-4">
-                        <p class="text-xs text-gray-500">輸入您的 API Key (Gemini 或 OpenAI 格式)，系統會自動辨識並解除模型限制。</p>
-                        <input type="password" id="customApiKey" class="w-full bg-white/5 border border-white/10 rounded-2xl p-4 focus:ring-1 focus:ring-white/20" placeholder="在此貼上您的 API Key...">
-                        <button onclick="applySettings()" class="bg-white text-black px-6 py-3 rounded-xl font-bold hover:bg-gray-200 transition-all">應用變更並刷新</button>
-                    </div>
-                </section>
+            <!-- 設定視圖 -->
+            <div id="view-settings" class="hidden flex-1 overflow-y-auto p-8 md:p-24 space-y-16 msg-anim">
+                <div class="max-w-2xl mx-auto space-y-12">
+                    <header>
+                        <h2 class="text-4xl font-extrabold tracking-tight">偏好設定</h2>
+                        <p class="text-gray-500 mt-2">自定義您的 AI 體驗與介面外觀</p>
+                    </header>
+                    
+                    <section class="space-y-6">
+                        <div class="flex items-center gap-3">
+                            <div class="w-1 h-4 bg-white rounded-full"></div>
+                            <h3 class="text-sm font-bold uppercase tracking-widest">核心密鑰</h3>
+                        </div>
+                        <div class="glass p-8 rounded-[32px] space-y-6">
+                            <div class="space-y-2">
+                                <label class="text-xs text-gray-400 ml-1">通用 API Key</label>
+                                <input type="password" id="customApiKey" class="w-full bg-white/5 border border-white/10 rounded-2xl p-4 focus:ring-1 focus:ring-white/20 transition-all outline-none" placeholder="sk-... 或 AIza...">
+                            </div>
+                            <button onclick="applySettings()" class="w-full bg-white text-black py-4 rounded-2xl font-bold hover:bg-gray-200 transition-all flex items-center justify-center gap-2">
+                                <i class="fas fa-sync-alt text-xs"></i> 應用並同步模型
+                            </button>
+                        </div>
+                    </section>
 
-                <section class="space-y-6">
-                    <h3 class="text-gray-400 font-bold uppercase tracking-widest text-xs">介面自定義</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="glass p-6 rounded-3xl space-y-4">
-                            <label class="text-sm font-bold">主頁大標題</label>
-                            <input type="text" id="inputHeroText" class="w-full bg-white/5 border border-white/10 rounded-xl p-3" placeholder="再次啟動高效模式！">
+                    <section class="space-y-6">
+                        <div class="flex items-center gap-3">
+                            <div class="w-1 h-4 bg-white rounded-full"></div>
+                            <h3 class="text-sm font-bold uppercase tracking-widest">個性化展示</h3>
                         </div>
-                        <div class="glass p-6 rounded-3xl space-y-4">
-                            <label class="text-sm font-bold">背景模糊 (px)</label>
-                            <input type="range" min="0" max="50" value="20" oninput="updateUI('blur', this.value)" class="w-full accent-white">
+                        <div class="glass p-8 rounded-[32px] space-y-6">
+                            <div class="space-y-2">
+                                <label class="text-xs text-gray-400 ml-1">首頁歡迎語</label>
+                                <input type="text" id="inputHeroText" class="w-full bg-white/5 border border-white/10 rounded-2xl p-4 focus:ring-1 focus:ring-white/20 outline-none" placeholder="輸入您的自定義標題...">
+                            </div>
                         </div>
-                    </div>
-                </section>
+                    </section>
+                </div>
             </div>
         </main>
     </div>
@@ -146,14 +190,17 @@
             apiKey: sessionStorage.getItem('next_api_key') || '',
             heroText: localStorage.getItem('next_hero_text') || '再次啟動高效模式！',
             models: [],
-            messages: []
+            messages: [],
+            selectedModel: '',
+            selectedProvider: ''
         };
 
         const dom = {
             chatHistory: document.getElementById('chatHistory'),
             heroSection: document.getElementById('hero-section'),
             userInput: document.getElementById('userInput'),
-            modelSelect: document.getElementById('modelSelect'),
+            modelOptions: document.getElementById('modelOptions'),
+            selectedModelLabel: document.getElementById('selectedModelLabel'),
             displayHeroText: document.getElementById('displayHeroText')
         };
 
@@ -170,7 +217,22 @@
             });
 
             document.getElementById('sendBtn').onclick = sendMessage;
-            dom.userInput.onkeydown = (e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }};
+            dom.userInput.onkeydown = (e) => { 
+                if(e.key === 'Enter' && !e.shiftKey) { 
+                    e.preventDefault(); 
+                    sendMessage(); 
+                }
+            };
+
+            // 點擊空白處關閉選單
+            window.addEventListener('click', (e) => {
+                if (!e.target.closest('.relative')) dom.modelOptions.classList.add('hidden');
+            });
+        }
+
+        function toggleModelList(e) {
+            e.stopPropagation();
+            dom.modelOptions.classList.toggle('hidden');
         }
 
         async function reloadModels() {
@@ -179,8 +241,33 @@
                 const res = await fetch('/api/models', { headers });
                 const data = await res.json();
                 state.models = data.models;
-                dom.modelSelect.innerHTML = data.models.map(m => `<option value="${m.id}" data-provider="${m.provider}">${m.name}</option>`).join('');
-            } catch (e) { console.error("模型載入失敗"); }
+                
+                // 渲染模擬選項
+                dom.modelOptions.innerHTML = data.models.map(m => `
+                    <div class="select-option ${m.id === state.selectedModel ? 'selected' : ''}" 
+                         onclick="selectModel('${m.id}', '${m.name}', '${m.provider}')">
+                        <span class="flex items-center gap-2">
+                            <i class="fas ${m.provider === 'Google' ? 'fa-bolt text-yellow-500' : 'fa-brain text-blue-400'} text-[10px]"></i>
+                            ${m.name}
+                        </span>
+                        ${m.id === state.selectedModel ? '<i class="fas fa-check text-[10px]"></i>' : ''}
+                    </div>
+                `).join('');
+
+                if (data.models.length > 0 && !state.selectedModel) {
+                    selectModel(data.models[0].id, data.models[0].name, data.models[0].provider);
+                }
+            } catch (e) { 
+                dom.selectedModelLabel.textContent = "載入失敗";
+            }
+        }
+
+        function selectModel(id, name, provider) {
+            state.selectedModel = id;
+            state.selectedProvider = provider;
+            dom.selectedModelLabel.textContent = name;
+            dom.modelOptions.classList.add('hidden');
+            reloadModels(); // 刷新勾選狀態
         }
 
         function switchTab(tab) {
@@ -188,10 +275,6 @@
             document.getElementById('view-settings').classList.toggle('hidden', tab !== 'settings');
             document.getElementById('tab-home').classList.toggle('active', tab === 'home');
             document.getElementById('tab-settings').classList.toggle('active', tab === 'settings');
-        }
-
-        function updateUI(type, val) {
-            if(type === 'blur') document.documentElement.style.setProperty('--glass-blur', val + 'px');
         }
 
         function applySettings() {
@@ -205,7 +288,6 @@
             localStorage.setItem('next_hero_text', newHero);
             dom.displayHeroText.textContent = newHero;
             
-            alert('設定已套用');
             reloadModels();
             switchTab('home');
         }
@@ -214,7 +296,6 @@
             const text = dom.userInput.value.trim();
             if(!text) return;
 
-            // 切換視圖
             dom.heroSection.classList.add('hidden');
             dom.chatHistory.classList.remove('hidden');
 
@@ -222,9 +303,7 @@
             dom.userInput.value = '';
             dom.userInput.style.height = 'auto';
 
-            const selectedModel = dom.modelSelect.value;
-            const provider = dom.modelSelect.options[dom.modelSelect.selectedIndex].dataset.provider;
-            const aiBubble = appendBubble('assistant', '思考中...', selectedModel);
+            const aiBubble = appendBubble('assistant', '正在思考中...', state.selectedModel);
 
             try {
                 state.messages.push({ role: 'user', content: text });
@@ -235,8 +314,8 @@
                         'x-custom-api-key': state.apiKey
                     },
                     body: JSON.stringify({
-                        model: selectedModel,
-                        provider: provider,
+                        model: state.selectedModel,
+                        provider: state.selectedProvider,
                         messages: state.messages
                     })
                 });
@@ -254,21 +333,24 @@
             const div = document.createElement('div');
             div.className = `flex flex-col ${role === 'user' ? 'items-end' : 'items-start'} msg-anim w-full`;
             div.innerHTML = `
-                ${role === 'assistant' ? `<div class="text-[10px] font-bold text-gray-600 mb-2 uppercase tracking-widest pl-2">${model}</div>` : ''}
-                <div class="max-w-[85%] p-5 rounded-[24px] ${role === 'user' ? 'bg-white text-black rounded-br-none' : 'glass rounded-bl-none'} shadow-xl">
-                    <div class="text-sm leading-relaxed whitespace-pre-wrap">${content}</div>
+                ${role === 'assistant' ? `<div class="text-[9px] font-bold text-gray-600 mb-2 uppercase tracking-[0.2em] pl-1">${model}</div>` : ''}
+                <div class="max-w-[90%] md:max-w-[85%] p-5 rounded-[24px] ${role === 'user' ? 'bg-white text-black rounded-br-none' : 'glass rounded-bl-none'} shadow-xl">
+                    <div class="text-[14px] leading-relaxed whitespace-pre-wrap">${content}</div>
                 </div>
             `;
             dom.chatHistory.appendChild(div);
-            document.getElementById('view-home').scrollTop = document.getElementById('view-home').scrollHeight;
+            // 滾動到底部
+            const scrollTarget = document.getElementById('view-home');
+            scrollTarget.scrollTo({ top: scrollTarget.scrollHeight, behavior: 'smooth' });
             return div;
         }
 
         function updateBubble(div, content, isError = false) {
-            const target = div.querySelector('.text-sm');
+            const target = div.querySelector('.text-[14px]');
             if(isError) target.classList.add('text-red-400');
             target.textContent = content;
-            document.getElementById('view-home').scrollTop = document.getElementById('view-home').scrollHeight;
+            const scrollTarget = document.getElementById('view-home');
+            scrollTarget.scrollTo({ top: scrollTarget.scrollHeight, behavior: 'smooth' });
         }
 
         init();
