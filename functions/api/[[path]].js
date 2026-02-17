@@ -1,6 +1,6 @@
 /**
- * Cloudflare Pages Functions - 全動態模型版
- * 支援動態讀取 Gemini 與 Cloudflare AI 模型列表
+ * Cloudflare Pages Functions - 穩定模型白名單版
+ * 只保留使用者測試通過的系列：Gemini Flash, Qwen, Llama 3.1
  */
 
 export async function onRequest(context) {
@@ -20,51 +20,52 @@ export async function onRequest(context) {
     }
 
     try {
-        // --- 路由 1: 動態獲取所有可用模型 ---
+        // --- 路由 1: 獲取模型列表 (嚴格過濾版) ---
         if (path === '/api/models') {
             let allModels = [];
 
-            // A. 動態獲取 Gemini 模型
+            // A. 動態獲取並過濾 Gemini 模型 (僅保留 Flash 系列)
             if (env.gemini_api) {
                 try {
                     const gRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${env.gemini_api}`);
                     const gData = await gRes.json();
                     if (gData.models) {
                         const geminiModels = gData.models
-                            .filter(m => m.supportedGenerationMethods.includes('generateContent'))
+                            .filter(m => 
+                                m.supportedGenerationMethods.includes('generateContent') && 
+                                m.name.toLowerCase().includes('flash') && // 只保留 Flash
+                                !m.name.toLowerCase().includes('lite') && // 移除 Lite
+                                !m.name.toLowerCase().includes('pro')     // 移除 Pro
+                            )
                             .map(m => ({
                                 id: m.name.split('/').pop(),
                                 name: m.displayName,
                                 provider: 'Google',
-                                supportsImage: m.name.includes('flash') || m.name.includes('pro') || m.name.includes('vision')
+                                supportsImage: true
                             }));
                         allModels = [...allModels, ...geminiModels];
                     }
                 } catch (e) { console.error("Gemini List Error"); }
             }
 
-            // B. 動態獲取 Cloudflare AI 模型 (過濾文本生成類)
-            if (env.AI) {
-                try {
-                    // Cloudflare 的模型列表 API 需要 Account ID
-                    // 這裡使用內建的 fetch 搭配 CF API 規範
-                    const cfAccountId = context.env.CLOUDFLARE_ACCOUNT_ID; // 建議在環境變數設定此項以獲取更精準列表
-                    // 如果沒有提供 Account ID，我們使用精選的文本模型清單作為備案
-                    const cfStaticList = [
-                        { id: '@cf/meta/llama-3.1-8b-instruct', name: 'Llama 3.1 8B', provider: 'Cloudflare', supportsImage: false },
-                        { id: '@cf/meta/llama-3.1-70b-instruct', name: 'Llama 3.1 70B', provider: 'Cloudflare', supportsImage: false },
-                        { id: '@cf/qwen/qwen1.5-7b-chat-ivq', name: 'Qwen 1.5 7B', provider: 'Cloudflare', supportsImage: false },
-                        { id: '@cf/mistral/mistral-7b-instruct-v0.3', name: 'Mistral 7B v0.3', provider: 'Cloudflare', supportsImage: false },
-                        { id: '@cf/google/gemma-7b-it', name: 'Gemma 7B IT', provider: 'Cloudflare', supportsImage: false }
-                    ];
-                    allModels = [...allModels, ...cfStaticList];
-                } catch (e) { console.error("CF List Error"); }
-            }
+            // B. Cloudflare AI 穩定模型 (Llama 3.1 與 Qwen 系列)
+            const cfStableList = [
+                // Qwen 系列 (使用者確認 ✅)
+                { id: '@cf/qwen/qwen1.5-7b-chat-ivq', name: 'Qwen 1.5 7B (穩定)', provider: 'Cloudflare', supportsImage: false },
+                { id: '@cf/qwen/qwen1.5-1.8b-chat', name: 'Qwen 1.5 1.8B (極速)', provider: 'Cloudflare', supportsImage: false },
+                { id: '@cf/qwen/qwen1.5-0.5b-chat', name: 'Qwen 1.5 0.5B (輕量)', provider: 'Cloudflare', supportsImage: false },
+                
+                // Llama 3.1 系列 (基於先前的成功測試)
+                { id: '@cf/meta/llama-3.1-8b-instruct', name: 'Llama 3.1 8B (推薦)', provider: 'Cloudflare', supportsImage: false },
+                { id: '@cf/meta/llama-3.2-3b-instruct', name: 'Llama 3.2 3B (最新)', provider: 'Cloudflare', supportsImage: false },
+                { id: '@cf/meta/llama-3.2-11b-vision-instruct', name: 'Llama 3.2 11B Vision', provider: 'Cloudflare', supportsImage: true }
+            ];
+            allModels = [...allModels, ...cfStableList];
 
             return new Response(JSON.stringify({ models: allModels }), { headers: corsHeaders });
         }
 
-        // --- 路由 2: 系統狀態與額度 ---
+        // --- 路由 2: 系統狀態 ---
         if (path === '/api/stats') {
             const today = new Date().toISOString().split('T')[0];
             const limit = parseInt(env.time_rest || '20');
@@ -94,7 +95,7 @@ export async function onRequest(context) {
             let usage = await env.DB.prepare("SELECT count FROM usage WHERE date = ?").bind(today).first();
             
             if (usage && usage.count >= limit) {
-                return new Response(JSON.stringify({ error: "已達今日使用上限" }), { status: 429, headers: corsHeaders });
+                return new Response(JSON.stringify({ error: "已達今日系統額度上限" }), { status: 429, headers: corsHeaders });
             }
 
             let responseText = "";
@@ -118,8 +119,11 @@ export async function onRequest(context) {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ contents })
                 });
+                
                 const gData = await gRes.json();
+                if (gRes.status === 429) throw new Error("API 請求過於頻繁 (Quota Exceeded)");
                 if (gData.error) throw new Error(gData.error.message);
+                
                 responseText = gData.candidates[0].content.parts[0].text;
 
             } else {
